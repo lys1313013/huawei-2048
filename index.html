@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>2048 · 方向练习</title>
+<style>
+:root{font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#332f2b;background:#faf8ef;font-synthesis:none}*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:24px 14px 40px}.app{width:min(100%,520px);margin:auto}header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}h1{font-size:clamp(34px,9vw,54px);line-height:1;margin:0;color:#776e65}.scores{display:flex;gap:8px}.score{min-width:82px;padding:7px 12px;border-radius:6px;background:#bbada0;color:white;text-align:center;font-size:12px;font-weight:700}.score strong{display:block;font-size:20px}.intro{color:#776e65;margin:10px 0 16px;line-height:1.55}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}button{font:inherit;touch-action:manipulation;cursor:pointer}.action,.dir{border:0;border-radius:6px;background:#8f7a66;color:#fff;padding:10px 14px;font-weight:700}.action:focus-visible,.dir:focus-visible{outline:3px solid #edc22e;outline-offset:2px}.action:hover,.dir:hover{background:#776452}.status{min-height:1.6em;color:#776e65;font-weight:600;margin:7px 0}.board-wrap{position:relative}.board{position:relative;background:#bbada0;border-radius:8px;padding:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;aspect-ratio:1;touch-action:none;user-select:none}.cell{display:flex;align-items:center;justify-content:center;min-width:0;border-radius:5px;background:rgba(238,228,218,.35);font-size:clamp(22px,8vw,42px);font-weight:800;color:#776e65}.cell[data-value="2"]{background:#eee4da}.cell[data-value="4"]{background:#ede0c8}.cell[data-value="8"]{background:#f2b179;color:#fff}.cell[data-value="16"]{background:#f59563;color:#fff}.cell[data-value="32"]{background:#f67c5f;color:#fff}.cell[data-value="64"]{background:#f65e3b;color:#fff}.cell[data-high="true"]{background:#edc22e;color:#fff;font-size:clamp(18px,6vw,32px)}.controls{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(2,48px);gap:6px;justify-content:center;margin:15px auto 8px}.dir{padding:0;font-size:20px}.dir-up{grid-column:2;grid-row:1}.dir-left{grid-column:1;grid-row:2}.dir-down{grid-column:2;grid-row:2}.dir-right{grid-column:3;grid-row:2}.help{font-size:13px;color:#776e65;line-height:1.6} .overlay{position:absolute;inset:0;border-radius:6px;background:rgba(250,248,239,.83);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;font-size:24px;font-weight:800;color:#776e65}.overlay[hidden]{display:none}.overlay p{font-size:14px;font-weight:500;margin:8px 0 12px}
+@media(max-width:380px){body{padding:16px 10px}.board{gap:7px;padding:7px}.cell{font-size:clamp(20px,7.5vw,32px)}.score{min-width:70px;padding:6px 8px}}
+</style>
+</head>
+<body>
+<main class="app">
+<header><h1>2048</h1><div class="scores" aria-label="分数"><div class="score">当前分数<strong id="score">0</strong></div><div class="score">最高分<strong id="best">0</strong></div></div></header>
+<p class="intro">合并相同数字，努力得到 2048。方向键或 WASD 移动，也可以滑动棋盘或点击方向按钮。</p>
+<div class="actions"><button class="action" id="restart">重新开始</button><button class="action" id="undo" disabled>撤销一步</button></div>
+<p class="status" id="status" role="status" aria-live="polite">准备开始</p>
+<div class="board-wrap"><section class="board" id="board" role="grid" aria-label="2048 游戏棋盘"></section><div class="overlay" id="overlay" hidden></div></div>
+<div class="controls" aria-label="方向控制"><button class="dir dir-up" data-dir="up" aria-label="向上">↑</button><button class="dir dir-left" data-dir="left" aria-label="向左">←</button><button class="dir dir-down" data-dir="down" aria-label="向下">↓</button><button class="dir dir-right" data-dir="right" aria-label="向右">→</button></div>
+<p class="help">每次有效移动后会出现一个新数字。合并得分会累加；「撤销一步」可恢复上一次有效移动。达到 2048 后仍可继续，直到棋盘没有可移动的位置。</p>
+</main>
+<script>
+(function(){'use strict';
+// PURE_CORE_START
+function slideLine(line){
+  var values=line.filter(function(n){return n!==0;}),out=[],score=0;
+  for(var i=0;i<values.length;i++){
+    if(i+1<values.length&&values[i]===values[i+1]){var merged=values[i]*2;out.push(merged);score+=merged;i++;}
+    else out.push(values[i]);
+  }
+  while(out.length<line.length)out.push(0);
+  return {line:out,score:score};
+}
+function moveBoard(board,direction){
+  var next=board.map(function(row){return row.slice();}),score=0;
+  for(var i=0;i<4;i++){
+    var line=[];
+    for(var j=0;j<4;j++)line.push(direction==='left'||direction==='right'?board[i][j]:board[j][i]);
+    if(direction==='right'||direction==='down')line.reverse();
+    var moved=slideLine(line);score+=moved.score;line=moved.line;
+    if(direction==='right'||direction==='down')line.reverse();
+    for(var k=0;k<4;k++){if(direction==='left'||direction==='right')next[i][k]=line[k];else next[k][i]=line[k];}
+  }
+  var changed=next.some(function(row,r){return row.some(function(v,c){return v!==board[r][c];});});
+  return {board:next,score:score,changed:changed};
+}
+function isGameOver(board){
+  for(var r=0;r<4;r++)for(var c=0;c<4;c++){
+    if(board[r][c]===0)return false;
+    if(c<3&&board[r][c]===board[r][c+1])return false;
+    if(r<3&&board[r][c]===board[r+1][c])return false;
+  }
+  return true;
+}
+// PURE_CORE_END
+var boardEl=document.getElementById('board'),scoreEl=document.getElementById('score'),bestEl=document.getElementById('best'),statusEl=document.getElementById('status'),overlay=document.getElementById('overlay'),undoButton=document.getElementById('undo');
+var board,score,best,won,undoState=null;
+try{best=Number(localStorage.getItem('pocket2048-best'))||0;}catch(e){best=0;}
+bestEl.textContent=best;
+function cloneBoard(b){return b.map(function(row){return row.slice();});}
+function spawn(){var empty=[];for(var r=0;r<4;r++)for(var c=0;c<4;c++)if(board[r][c]===0)empty.push([r,c]);if(!empty.length)return;var pos=empty[Math.floor(Math.random()*empty.length)];board[pos[0]][pos[1]]=Math.random()<0.9?2:4;}
+function render(){boardEl.textContent='';for(var r=0;r<4;r++)for(var c=0;c<4;c++){var n=board[r][c],cell=document.createElement('div');cell.className='cell';cell.setAttribute('role','gridcell');cell.setAttribute('aria-label','第'+(r+1)+'行第'+(c+1)+'列：'+(n||'空'));cell.textContent=n||'';if(n)cell.setAttribute('data-value',n<=64?n:'high');if(n>64)cell.setAttribute('data-high','true');boardEl.appendChild(cell);}scoreEl.textContent=score;bestEl.textContent=best;undoButton.disabled=!undoState;}
+function checkEnd(){if(won){overlay.hidden=false;overlay.innerHTML='';var title=document.createElement('div');title.textContent='达到 2048！';var p=document.createElement('p');p.textContent='恭喜完成目标，你可以继续合并更大的数字。';overlay.appendChild(title);overlay.appendChild(p);}else if(isGameOver(board)){overlay.hidden=false;overlay.innerHTML='';var title2=document.createElement('div');title2.textContent='没有可移动的位置';var p2=document.createElement('p');p2.textContent='重新开始再挑战一次吧。';overlay.appendChild(title2);overlay.appendChild(p2);statusEl.textContent='游戏结束';}else overlay.hidden=true;}
+function restart(){board=Array.from({length:4},function(){return [0,0,0,0];});score=0;won=false;undoState=null;overlay.hidden=true;spawn();spawn();statusEl.textContent='新局开始';render();}
+function move(direction){if(isGameOver(board))return;var result=moveBoard(board,direction);if(!result.changed)return;undoState={board:cloneBoard(board),score:score,won:won};board=result.board;score+=result.score;spawn();if(!won&&board.some(function(row){return row.indexOf(2048)!==-1;})){won=true;statusEl.textContent='达到 2048，可以继续玩';}else statusEl.textContent=result.score?'合并得分 +'+result.score:'已移动';if(score>best){best=score;try{localStorage.setItem('pocket2048-best',String(best));}catch(e){}}render();checkEnd();}
+function undo(){if(!undoState)return;board=undoState.board;score=undoState.score;won=undoState.won;undoState=null;overlay.hidden=true;statusEl.textContent='已撤销上一步';render();}
+var keyMap={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};
+document.addEventListener('keydown',function(e){var dir=keyMap[e.key];if(dir){e.preventDefault();move(dir);}});
+document.querySelectorAll('[data-dir]').forEach(function(button){button.addEventListener('click',function(){move(button.getAttribute('data-dir'));});});
+document.getElementById('restart').addEventListener('click',restart);undoButton.addEventListener('click',undo);
+var touchStart=null;boardEl.addEventListener('touchstart',function(e){if(e.touches.length===1)touchStart={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});boardEl.addEventListener('touchend',function(e){if(!touchStart)return;var dx=e.changedTouches[0].clientX-touchStart.x,dy=e.changedTouches[0].clientY-touchStart.y;touchStart=null;if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;move(Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up'));},{passive:true});
+restart();
+})();
+</script>
+</body>
+</html>
